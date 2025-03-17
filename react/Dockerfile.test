@@ -1,0 +1,15 @@
+FROM cypress/browsers:node-20.17.0-chrome-128.0.6613.137-1-ff-130.0.1-edge-128.0.2739.67-1
+
+WORKDIR /app
+
+ARG BACKEND_BASE_URL
+
+ENV VITE_BACKEND_BASE_URL ${BACKEND_BASE_URL}
+
+COPY package*.json .
+
+RUN npm ci --silent
+
+COPY . .
+
+CMD ["npm", "run", "dev"]

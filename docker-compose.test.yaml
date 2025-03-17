@@ -1,0 +1,71 @@
+version: '3.9'
+services:
+  frontend:
+    build:
+      context: react
+      dockerfile: Dockerfile.test
+      args:
+        - BACKEND_BASE_URL=http://backend:3000/api
+    container_name: 'frontend_test_container'
+    depends_on:
+      - backend
+  backend:
+    build:
+      context: express
+      dockerfile: Dockerfile.test
+    container_name: 'backend_test_container'
+    environment:
+      - FRONTEND_BASE_URL=${TEST_FRONTEND_BASE_URL}
+      - BACKEND_BASE_URL=${TEST_BACKEND_BASE_URL}
+      - WEB3_PRIVATE_KEY=${TEST_WEB3_PRIVATE_KEY}
+      - SUPPORTED_CHAIN_ID=${TEST_SUPPORTED_CHAIN_ID}
+      - JWT_SECRET=${TEST_JWT_SECRET}
+      - DATABASE_HOST=mariadb
+      - DATABASE_NAME=event_ticketing_app
+      - DATABASE_USER=user
+      - DATABASE_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_USER=default
+      - REDIS_PASSWORD=password
+      - AMQP_HOST=rabbitmq
+      - AMQP_USER=user
+      - AMQP_PASSWORD=password
+    depends_on:
+      mariadb:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  mariadb:
+    image: 'mariadb:11.4-noble'
+    container_name: 'mariadb_container'
+    environment:
+      - MARIADB_USER=user
+      - MARIADB_PASSWORD=password
+      - MARIADB_ROOT_PASSWORD=password
+      - MARIADB_DATABASE=event_ticketing_app
+    volumes:
+      - ./db-init:/docker-entrypoint-initdb.d
+  rabbitmq:
+    image: 'rabbitmq:4.0'
+    container_name: 'rabbitmq_container'
+    hostname: 'rabbit'
+    environment:
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+    healthcheck:
+      test: ['CMD', 'rabbitmqctl', 'status']
+      interval: 5s
+      timeout: 20s
+      retries: 5
+  redis:
+    image: 'redis/redis-stack-server'
+    container_name: 'redis_container'
+    environment:
+      - REDIS_ARGS=--requirepass password
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a password ping | grep PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 3

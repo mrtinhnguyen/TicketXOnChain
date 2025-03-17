@@ -1,0 +1,163 @@
+version: '3.9'
+services:
+  frontend:
+    build:
+      context: react
+      args:
+        - BACKEND_BASE_URL=${BACKEND_BASE_URL:-http://localhost:3000/api}
+        - GOOGLE_MAPS_EMBED_API_KEY=${GOOGLE_MAPS_EMBED_API_KEY:-}
+        - GOOGLE_CALENDAR_API_KEY=${GOOGLE_CALENDAR_API_KEY:-}
+        - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID:-}
+        - SENTRY_DSN=${SENTRY_DSN:-}
+        - SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN:-}
+    container_name: 'frontend_container'
+    ports:
+      - '${FRONTEND_HOST_PORT:-80}:80'
+    depends_on:
+      - backend
+    restart: always
+  backend:
+    build:
+      context: express
+    container_name: 'backend_container'
+    environment:
+      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL}
+      - BACKEND_BASE_URL=${BACKEND_BASE_URL}
+      - WEB3_PRIVATE_KEY=${WEB3_PRIVATE_KEY}
+      - WEB3_PROVIDER=ws://ganache:8545
+      - SUPPORTED_CHAIN_ID=${SUPPORTED_CHAIN_ID}
+      - JWT_SECRET=${JWT_SECRET}
+      - TICKET_FACTORY_ADDRESS=${TICKET_FACTORY_ADDRESS}
+      - TICKET_HANDLER_ADDRESS=${TICKET_HANDLER_ADDRESS}
+      - DATABASE_HOST=mariadb
+      - DATABASE_NAME=event_ticketing_app
+      - DATABASE_USER=user
+      - DATABASE_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_USER=default
+      - REDIS_PASSWORD=password
+      - AMQP_HOST=rabbitmq
+      - AMQP_USER=user
+      - AMQP_PASSWORD=password
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_SECURE=${MAIL_SECURE}
+      - MAIL_USER=${MAIL_USER}
+      - MAIL_PASS=${MAIL_PASS}
+      - STORAGE_BUCKET=${STORAGE_BUCKET}
+      - FIREBASE_ADMINSDK_LOCATION=/run/secrets/firebase_adminsdk
+      - GOOGLE_GEOCODING_API=${GOOGLE_GEOCODING_API}
+      - GOOGLE_MAPS_EMBED_API=${GOOGLE_MAPS_EMBED_API}
+    secrets:
+      - firebase_adminsdk
+    ports:
+      - '${BACKEND_HOST_PORT:-3000}:3000'
+    depends_on:
+      mariadb:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ganache:
+        condition: service_started
+    restart: always
+  event_consumer:
+    build:
+      context: express
+      dockerfile: Dockerfile.EthEventConsumer
+    environment:
+      - WEB3_PRIVATE_KEY=${WEB3_PRIVATE_KEY}
+      - WEB3_PROVIDER=ws://ganache:8545
+      - TICKET_FACTORY_ADDRESS=${TICKET_FACTORY_ADDRESS}
+      - TICKET_HANDLER_ADDRESS=${TICKET_HANDLER_ADDRESS}
+      - DATABASE_HOST=mariadb
+      - DATABASE_NAME=event_ticketing_app
+      - DATABASE_USER=user
+      - DATABASE_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_USER=default
+      - REDIS_PASSWORD=password
+      - AMQP_HOST=rabbitmq
+      - AMQP_USER=user
+      - AMQP_PASSWORD=password
+    deploy:
+      mode: replicated
+      replicas: 3
+      endpoint_mode: vip
+    depends_on:
+      - event_producer
+    restart: always
+  event_producer:
+    build:
+      context: express
+      dockerfile: Dockerfile.EthEventProducer
+    container_name: 'ethereum_event_producer_container'
+    environment:
+      - WEB3_PRIVATE_KEY=${WEB3_PRIVATE_KEY}
+      - WEB3_PROVIDER=ws://ganache:8545
+      - TICKET_FACTORY_ADDRESS=${TICKET_FACTORY_ADDRESS}
+      - TICKET_HANDLER_ADDRESS=${TICKET_HANDLER_ADDRESS}
+      - DATABASE_HOST=mariadb
+      - DATABASE_NAME=event_ticketing_app
+      - DATABASE_USER=user
+      - DATABASE_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_USER=default
+      - REDIS_PASSWORD=password
+      - AMQP_HOST=rabbitmq
+      - AMQP_USER=user
+      - AMQP_PASSWORD=password
+    depends_on:
+      - backend
+    restart: always
+  mariadb:
+    image: 'mariadb:11.4-noble'
+    container_name: 'mariadb_container'
+    environment:
+      - MARIADB_USER=user
+      - MARIADB_PASSWORD=password
+      - MARIADB_ROOT_PASSWORD=password
+      - MARIADB_DATABASE=event_ticketing_app
+    ports:
+      - '3306:3306'
+    volumes:
+      - ./db-init:/docker-entrypoint-initdb.d
+      - ./mariadb:/var/lib/mysql
+    restart: always
+  rabbitmq:
+    image: 'rabbitmq:4.0'
+    container_name: 'rabbitmq_container'
+    hostname: 'rabbit'
+    environment:
+      - RABBITMQ_DEFAULT_USER=user
+      - RABBITMQ_DEFAULT_PASS=password
+    volumes:
+      - ./rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmqctl', 'status']
+      interval: 5s
+      timeout: 20s
+      retries: 5
+    restart: always
+  redis:
+    image: 'redis/redis-stack-server'
+    container_name: 'redis_container'
+    environment:
+      - REDIS_ARGS=--requirepass password
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a password ping | grep PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: always
+  ganache:
+    build:
+      context: truffle
+    container_name: 'ganache_container'
+    ports:
+      - '8545:8545'
+    restart: always
+secrets:
+  firebase_adminsdk:
+    file: express/firebase-adminsdk.json

@@ -1,0 +1,2257 @@
+openapi: "3.1.0"
+info:
+  version: "1.0.0"
+  title: "Event ticketing app"
+  description: "Project of a web application for selling event tickets using blockchain."
+servers:
+  - url: http://localhost:{port}/api
+    description: Development server
+    variables:
+      port:
+        enum:
+          - "3000"
+        default: "3000"
+  - url: https://jalowiecki.toadres.pl/api
+    description: Production server
+paths:
+  /artists:
+    get:
+      operationId: ListArtists
+      description: List available artists
+      parameters:
+        - name: search
+          description: A string to search artists by name
+          in: query
+          schema:
+            type: string
+          required: false
+        - name: page
+          description: A listing page number
+          in: query
+          schema:
+            $ref: "#/components/schemas/Page"
+          required: false
+      responses:
+        "200":
+          description: Available artists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    minimum: 0
+                  pages:
+                    type: integer
+                    minimum: 1
+                  currentPage:
+                    type: integer
+                    minimum: 1
+                  results:
+                    $ref: "#/components/schemas/ListArtists"
+                required:
+                  - count
+                  - pages
+                  - currentPage
+                  - results
+                additionalProperties: false
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Artists
+    post:
+      operationId: CreateArtist
+      description: Create new artist
+      security:
+        - bearerAuth: [ADMINISTRATOR]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateArtist"
+      responses:
+        "201":
+          description: Created artist details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetArtist"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Artists
+  /artists/{id}:
+    parameters:
+      - name: id
+        description: The unique identifier of the artist
+        in: path
+        schema:
+          $ref: "#/components/schemas/Id"
+        required: true
+    get:
+      operationId: GetArtist
+      description: Get artist details
+      responses:
+        "200":
+          description: Artist details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetArtist"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Artists
+    patch:
+      operationId: UpdateArtist
+      description: Update artist details
+      security:
+        - bearerAuth: [ADMINISTRATOR]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateArtist"
+      responses:
+        "200":
+          description: Artist updated details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetArtist"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Artists
+  /artists/{id}/review:
+    parameters:
+      - name: id
+        description: The unique identifier of the artist
+        in: path
+        schema:
+          $ref: "#/components/schemas/Id"
+        required: true
+    post:
+      operationId: CreateReview
+      description: Create artist's performance review
+      security:
+        - bearerAuth: [USER]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReview"
+      responses:
+        "201":
+          description: Created review details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetReview"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Artists
+  /artists/{id}/follow:
+    parameters:
+      - name: id
+        description: The unique identifier of the artist
+        in: path
+        schema:
+          $ref: "#/components/schemas/Id"
+        required: true
+    post:
+      operationId: FollowArtist
+      description: Follow artist
+      security:
+        - bearerAuth: [USER]
+      responses:
+        "204":
+          description: Successfully followed artist
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Artists
+    delete:
+      operationId: UnfollowArtist
+      description: Unfollow artist
+      security:
+        - bearerAuth: [USER]
+      responses:
+        "204":
+          description: Successfully unfollowed artist
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Artists
+  /categories:
+    get:
+      operationId: ListCategories
+      description: List available categories
+      responses:
+        "200":
+          description: Available categories
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListCategories"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Categories
+  /cities:
+    get:
+      operationId: ListCities
+      description: List available cities
+      responses:
+        "200":
+          description: Available cities
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListCities"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Cities
+  /events:
+    get:
+      operationId: ListEvents
+      description: List approved events
+      parameters:
+        - name: search
+          description: A string to search event by name, tags and description
+          in: query
+          schema:
+            type: string
+          required: false
+        - name: idSubcategory
+          description: The unique identifier of the subcategory
+          in: query
+          schema:
+            $ref: "#/components/schemas/Id"
+          required: false
+        - name: idCity
+          description: The unique identifier of the city
+          in: query
+          schema:
+            $ref: "#/components/schemas/Id"
+          required: false
+        - name: sort
+          description: Specifies sort condition
+          in: query
+          schema:
+            type: string
+            enum:
+              - NEWEST
+              - LOWEST_PRICE
+              - HIGHEST_PRICE
+              - MOST_LIKES
+              - STARTING_SOON
+            default: NEWEST
+          required: false
+        - name: page
+          description: A listing page number
+          in: query
+          schema:
+            $ref: "#/components/schemas/Page"
+          required: false
+      responses:
+        "200":
+          description: List of approved events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    minimum: 0
+                  pages:
+                    type: integer
+                    minimum: 1
+                  currentPage:
+                    type: integer
+                    minimum: 1
+                  results:
+                    $ref: "#/components/schemas/ListEvents"
+                required:
+                  - count
+                  - pages
+                  - currentPage
+                  - results
+                additionalProperties: false
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Events
+    post:
+      operationId: CreateEvent
+      description: Create new event
+      security:
+        - bearerAuth: [EVENTS_ORGANIZER]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEvent"
+      responses:
+        "201":
+          description: Created event details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetEvent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Events
+  /events/to-approve:
+    get:
+      operationId: ListEventsToApprove
+      description: List events to approve
+      security:
+        - bearerAuth: [ADMINISTRATOR]
+      parameters:
+        - name: page
+          description: A listing page number
+          in: query
+          schema:
+            $ref: "#/components/schemas/Page"
+          required: false
+      responses:
+        "200":
+          description: Events to approve
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    minimum: 0
+                  pages:
+                    type: integer
+                    minimum: 1
+                  currentPage:
+                    type: integer
+                    minimum: 1
+                  results:
+                    $ref: "#/components/schemas/ListEvents"
+                required:
+                  - count
+                  - pages
+                  - currentPage
+                  - results
+                additionalProperties: false
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Events
+  /events/{id}:
+    parameters:
+      - name: id
+        description: The unique identifier of the event
+        in: path
+        schema:
+          $ref: "#/components/schemas/Id"
+        required: true
+    get:
+      operationId: GetEvent
+      description: Get event details
+      security:
+        - {}
+        - bearerAuth: [USER]
+      responses:
+        "200":
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetEvent"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Events
+    patch:
+      operationId: UpdateEvent
+      description: Update event details
+      security:
+        - bearerAuth: [EVENTS_ORGANIZER]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEvent"
+      responses:
+        "200":
+          description: Event updated details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetEvent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Events
+    delete:
+      operationId: DeleteEvent
+      description: Delete event
+      security:
+        - bearerAuth: [ADMINISTRATOR]
+      responses:
+        "204":
+          description: Successfully deleted event
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Events
+  /events/{id}/approve:
+    parameters:
+      - name: id
+        description: The unique identifier of the event
+        in: path
+        schema:
+          $ref: "#/components/schemas/Id"
+        required: true
+    post:
+      operationId: ApproveEvent
+      description: Approve event
+      security:
+        - bearerAuth: [ADMINISTRATOR]
+      responses:
+        "204":
+          description: Successfully approved event
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Events
+  /events/{id}/like:
+    parameters:
+      - name: id
+        description: The unique identifier of the event
+        in: path
+        schema:
+          $ref: "#/components/schemas/Id"
+        required: true
+    post:
+      operationId: LikeEvent
+      description: Like event
+      responses:
+        "204":
+          description: Successfully liked event
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Events
+  /events/{id}/tickets/verify:
+    parameters:
+      - name: id
+        description: The unique identifier of the event
+        in: path
+        schema:
+          $ref: "#/components/schemas/Id"
+        required: true
+    post:
+      operationId: PassiveTicketVerification
+      description: Passive ticket verification
+      security:
+        - bearerAuth: [EVENTS_ORGANIZER]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                publicAddress:
+                  $ref: "#/components/schemas/PublicAddress"
+              required:
+                - publicAddress
+              additionalProperties: false
+      responses:
+        "200":
+          description: Passive ticket verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketVerificationResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Events
+  /events/{id}/tickets/subscribe:
+    parameters:
+      - name: id
+        description: The unique identifier of the event
+        in: path
+        schema:
+          $ref: "#/components/schemas/Id"
+        required: true
+    post:
+      operationId: ActiveTicketVerification
+      description: Subscribe for active ticket verification, long polling - 15 seconds timeout
+      security:
+        - bearerAuth: [EVENTS_ORGANIZER]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                uuid:
+                  $ref: "#/components/schemas/UUID"
+              required:
+                - uuid
+              additionalProperties: false
+      responses:
+        "200":
+          description: Active ticket verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketVerificationResult"
+        "204":
+          description: Long polling timeout has passed
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Events
+  /events/{id}/tickets/{tokenId}:
+    parameters:
+      - name: id
+        description: The unique identifier of the event
+        in: path
+        schema:
+          $ref: "#/components/schemas/Id"
+        required: true
+      - name: tokenId
+        description: The unique identifier of the ticket token from NFT collection
+        in: path
+        schema:
+          $ref: "#/components/schemas/TokenId"
+        required: true
+    get:
+      operationId: GetToken
+      description: Get token metadata
+      responses:
+        "200":
+          description: Event details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetToken"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Events
+  /uploads:
+    post:
+      operationId: CreateUpload
+      description: Create new upload
+      security:
+        - bearerAuth: [EVENTS_ORGANIZER, ADMINISTRATOR]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/CreateUpload"
+      responses:
+        "201":
+          description: Created upload details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetUpload"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Uploads
+  /users:
+    get:
+      operationId: ListUsers
+      description: List available users
+      security:
+        - bearerAuth: [ADMINISTRATOR]
+      parameters:
+        - name: search
+          description: A string to search user by username
+          in: query
+          schema:
+            type: string
+          required: false
+        - name: page
+          description: A listing page number
+          in: query
+          schema:
+            $ref: "#/components/schemas/Page"
+          required: false
+      responses:
+        "200":
+          description: Available users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    minimum: 0
+                  pages:
+                    type: integer
+                    minimum: 1
+                  currentPage:
+                    type: integer
+                    minimum: 1
+                  results:
+                    $ref: "#/components/schemas/ListUsers"
+                required:
+                  - count
+                  - pages
+                  - currentPage
+                  - results
+                additionalProperties: false
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /users/nonce:
+    post:
+      operationId: GenerateNonce
+      description: Generate nonce for user with provided wallet address
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                publicAddress:
+                  $ref: "#/components/schemas/PublicAddress"
+              required:
+                - publicAddress
+              additionalProperties: false
+      responses:
+        "200":
+          description: User nonce
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nonce:
+                    $ref: "#/components/schemas/Nonce"
+                required:
+                  - nonce
+                additionalProperties: false
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          description: User not found, return sign up token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  signUpToken:
+                    $ref: "#/components/schemas/JWT"
+                required:
+                  - signUpToken
+                additionalProperties: false
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /users/sign-up:
+    post:
+      operationId: SignUp
+      description: Sign up user account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signUpToken:
+                  $ref: "#/components/schemas/JWT"
+                email:
+                  $ref: "#/components/schemas/Email"
+                username:
+                  $ref: "#/components/schemas/Name"
+                name:
+                  $ref: "#/components/schemas/Name"
+                surname:
+                  $ref: "#/components/schemas/Name"
+                birthdate:
+                  $ref: "#/components/schemas/Date"
+              required:
+                - signUpToken
+                - email
+                - username
+                - name
+                - surname
+                - birthdate
+              additionalProperties: false
+      responses:
+        "204":
+          description: Successfully signed up user account
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /users/activate:
+    post:
+      operationId: ActivateUser
+      description: Activate user account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                activationToken:
+                  $ref: "#/components/schemas/JWT"
+              required:
+                - activationToken
+              additionalProperties: false
+      responses:
+        "204":
+          description: Successfully activated user account
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /users/verify:
+    post:
+      operationId: SignIn
+      description: Sign in user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  minLength: 1
+                signature:
+                  description: ECDSA private key signature of message
+                  type: string
+                  minLength: 1
+              required:
+                - message
+                - signature
+              additionalProperties: false
+      responses:
+        "200":
+          description: JWT tokens pair
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticationToken:
+                    $ref: "#/components/schemas/JWT"
+                  refreshToken:
+                    $ref: "#/components/schemas/JWT"
+                required:
+                  - authenticationToken
+                  - refreshToken
+                additionalProperties: false
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /users/refresh:
+    post:
+      operationId: RefreshTokens
+      description: Refresh JWT tokens pair
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  $ref: "#/components/schemas/JWT"
+              required:
+                - refreshToken
+              additionalProperties: false
+      responses:
+        "200":
+          description: JWT tokens pair
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticationToken:
+                    $ref: "#/components/schemas/JWT"
+                  refreshToken:
+                    $ref: "#/components/schemas/JWT"
+                required:
+                  - authenticationToken
+                  - refreshToken
+                additionalProperties: false
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /users/{id}:
+    parameters:
+      - name: id
+        description: The unique identifier of the user
+        in: path
+        schema:
+          $ref: "#/components/schemas/Id"
+        required: true
+    patch:
+      operationId: UpdateUserRole
+      description: Update user role
+      security:
+        - bearerAuth: [ADMINISTATOR]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRole"
+      responses:
+        "200":
+          description: Updated user details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /users/me/events:
+    get:
+      operationId: ListUserEvents
+      description: List events created by currently signed in user
+      security:
+        - bearerAuth: [EVENTS_ORGANIZER]
+      parameters:
+        - name: search
+          description: A string to search event by name, tags and description
+          in: query
+          schema:
+            type: string
+          required: false
+        - name: idSubcategory
+          description: The unique identifier of the subcategory
+          in: query
+          schema:
+            $ref: "#/components/schemas/Id"
+          required: false
+        - name: idCity
+          description: The unique identifier of the city
+          in: query
+          schema:
+            $ref: "#/components/schemas/Id"
+          required: false
+        - name: page
+          description: A listing page number
+          in: query
+          schema:
+            $ref: "#/components/schemas/Page"
+          required: false
+      responses:
+        "200":
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    minimum: 0
+                  pages:
+                    type: integer
+                    minimum: 1
+                  currentPage:
+                    type: integer
+                    minimum: 1
+                  results:
+                    $ref: "#/components/schemas/ListEvents"
+                required:
+                  - count
+                  - pages
+                  - currentPage
+                  - results
+                additionalProperties: false
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /users/me/events/tickets:
+    get:
+      operationId: ListUserEventsTickets
+      description: List tickets from events created by currently signed in user
+      security:
+        - bearerAuth: [EVENTS_ORGANIZER]
+      responses:
+        "200":
+          description: List of tickets
+          content:
+            application/json:
+              schema:
+                maxItems: 100
+                $ref: "#/components/schemas/ListTickets"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /users/me/sales-report:
+    get:
+      operationId: GetSalesReport
+      description: Get currently signed in user sales report details
+      security:
+        - bearerAuth: [EVENTS_ORGANIZER]
+      responses:
+        "200":
+          description: Sales report details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesReport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /users/me:
+    get:
+      operationId: GetMe
+      description: Get currently signed in user details
+      security:
+        - bearerAuth: [USER]
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+    patch:
+      operationId: UpdateUser
+      description: Update currently signed in user details
+      security:
+        - bearerAuth: [USER]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUser"
+      responses:
+        "200":
+          description: User updated details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /users/me/tickets:
+    get:
+      operationId: ListUserTickets
+      description: List currently signed in user tickets
+      security:
+        - bearerAuth: [USER]
+      responses:
+        "200":
+          description: User tickets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListUserTickets"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /users/me/following:
+    get:
+      operationId: ListUserFollowedArtists
+      description: Get currently signed in user followed artists
+      security:
+        - bearerAuth: [USER]
+      responses:
+        "200":
+          description: User followed artists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListArtists"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Users
+  /reviews/to-approve:
+    get:
+      operationId: ListReviewsToApprove
+      description: List reviews to approve
+      security:
+        - bearerAuth: [ADMINISTRATOR]
+      parameters:
+        - name: page
+          description: A listing page number
+          in: query
+          schema:
+            $ref: "#/components/schemas/Page"
+          required: false
+      responses:
+        "200":
+          description: Reviews to approve
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    minimum: 0
+                  pages:
+                    type: integer
+                    minimum: 1
+                  currentPage:
+                    type: integer
+                    minimum: 1
+                  results:
+                    $ref: "#/components/schemas/ListReviews"
+                required:
+                  - count
+                  - pages
+                  - currentPage
+                  - results
+                additionalProperties: false
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Reviews
+  /reviews/{id}:
+    parameters:
+      - name: id
+        description: The unique identifier of the review
+        in: path
+        schema:
+          $ref: "#/components/schemas/Id"
+        required: true
+    delete:
+      operationId: DeleteReview
+      description: Delete review
+      security:
+        - bearerAuth: [ADMINISTRATOR]
+      responses:
+        "204":
+          description: Successfully deleted review
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Reviews
+  /reviews/{id}/approve:
+    parameters:
+      - name: id
+        description: The unique identifier of the review
+        in: path
+        schema:
+          $ref: "#/components/schemas/Id"
+        required: true
+    post:
+      operationId: ApproveReview
+      description: Approve review
+      security:
+        - bearerAuth: [ADMINISTRATOR]
+      responses:
+        "204":
+          description: Successfully approved review
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Reviews
+  /tickets/approve:
+    post:
+      operationId: ApproveActiveTicketVerification
+      description: Approve active ticket verification
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                uuid:
+                  $ref: "#/components/schemas/UUID"
+                signature:
+                  description: ECDSA private key signature of uuid
+                  type: string
+                  minLength: 1
+              required:
+                - uuid
+                - signature
+              additionalProperties: false
+      responses:
+        "204":
+          description: Successfully approved ticket verification
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        default:
+          $ref: "#/components/responses/InternalServerError"
+      tags:
+        - Tickets
+components:
+  responses:
+    BadRequest:
+      description: Invalid request contents
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Lack of or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: User is not permitted for this action
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Requested resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalServerError:
+      description: An internal server error has occured
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Page:
+      description: A listing page number
+      type: integer
+      minimum: 1
+    Id:
+      description: The unique identifier
+      type: integer
+    TokenId:
+      description: The unique identifier of the token
+      type: integer
+      minimum: 0
+    PublicAddress:
+      description: Ethereum public address
+      type: string
+      pattern: ^0x[0-9a-fA-F]{40}$
+    Nonce:
+      description: Cryptographic nonce
+      type: string
+      minLength: 17
+      maxLength: 17
+    JWT:
+      description: JSON Web Token
+      type: string
+      minLength: 1
+    Name:
+      type: string
+      minLength: 1
+      maxLength: 85
+    LongName:
+      type: string
+      minLength: 1
+      maxLength: 120
+    Description:
+      type: string
+      minLength: 1
+      maxLength: 3000
+    Content:
+      type: string
+      minLength: 1
+      maxLength: 1000
+    Url:
+      type: string
+      format: url
+      maxLength: 255
+    Email:
+      type: string
+      format: email
+      maxLength: 320
+    UploadType:
+      type: string
+      enum:
+        - FILE
+        - IMAGE
+    Tags:
+      type: string
+      minLength: 1
+      maxLength: 100
+    Price:
+      description: Price of ticket in Wei units
+      type: string
+      format: ^\d+(.\d{1,2})?$
+      examples: ["1000000000000000000.00"]
+    PostalCode:
+      type: string
+      pattern: ^\d{2}-\d{3}$
+    Date:
+      type: string
+      format: date
+    DateTime:
+      type: string
+      format: date-time
+    Rate:
+      type: integer
+      minimum: 0
+      maximum: 5
+    UUID:
+      description: Version 4 UUID
+      type: string
+      pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+    UserRole:
+      type: string
+      enum:
+        - USER
+        - EVENTS_ORGANIZER
+        - ADMINISTRATOR
+    CreateArtist:
+      type: object
+      properties:
+        pictureIdUpload:
+          $ref: "#/components/schemas/Id"
+        name:
+          $ref: "#/components/schemas/Name"
+        description:
+          $ref: "#/components/schemas/Description"
+      required:
+        - pictureIdUpload
+        - name
+        - description
+      additionalProperties: false
+    UpdateArtist:
+      $ref: "#/components/schemas/CreateArtist"
+    ListArtists:
+      type: array
+      items:
+        type: object
+        properties:
+          idArtist:
+            $ref: "#/components/schemas/Id"
+          pictureUrl:
+            $ref: "#/components/schemas/Url"
+          name:
+            $ref: "#/components/schemas/Name"
+        required:
+          - idArtist
+          - pictureUrl
+          - name
+        additionalProperties: false
+    GetArtist:
+      type: object
+      properties:
+        idArtist:
+          $ref: "#/components/schemas/Id"
+        pictureUrl:
+          $ref: "#/components/schemas/Url"
+        name:
+          $ref: "#/components/schemas/Name"
+        description:
+          $ref: "#/components/schemas/Description"
+        events:
+          description: List of events in which the artist will perform
+          maxItems: 10
+          $ref: "#/components/schemas/ListEvents"
+        reviews:
+          description: List of approved artist's performance reviews
+          maxItems: 30
+          $ref: "#/components/schemas/ListReviews"
+      required:
+        - idArtist
+        - pictureUrl
+        - name
+        - description
+        - events
+        - reviews
+      additionalProperties: false
+    ListCategories:
+      type: array
+      items:
+        type: object
+        properties:
+          idCategory:
+            $ref: "#/components/schemas/Id"
+          name:
+            $ref: "#/components/schemas/Name"
+          subcategories:
+            type: array
+            items:
+              type: object
+              properties:
+                idSubcategory:
+                  $ref: "#/components/schemas/Id"
+                name:
+                  $ref: "#/components/schemas/Name"
+              required:
+                - idSubcategory
+                - name
+              additionalProperties: false
+        required:
+          - idCategory
+          - name
+          - subcategories
+        additionalProperties: false
+    ListCities:
+      type: array
+      items:
+        type: object
+        properties:
+          idCity:
+            $ref: "#/components/schemas/Id"
+          name:
+            $ref: "#/components/schemas/Name"
+        required:
+          - idCity
+          - name
+        additionalProperties: false
+    CreateEvent:
+      type: object
+      properties:
+        idSubcategory:
+          $ref: "#/components/schemas/Id"
+        cityName:
+          $ref: "#/components/schemas/Name"
+        statuteIdUpload:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Id"
+        nftImageIdUpload:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Id"
+        name:
+          $ref: "#/components/schemas/LongName"
+        tags:
+          $ref: "#/components/schemas/Tags"
+        description:
+          $ref: "#/components/schemas/Description"
+        video:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Url"
+        ticketPrice:
+          $ref: "#/components/schemas/Price"
+        ticketCount:
+          type: integer
+          minimum: 1
+        maxTicketsPerUser:
+          type: integer
+          minimum: 1
+        location:
+          $ref: "#/components/schemas/LongName"
+        street:
+          $ref: "#/components/schemas/Name"
+        postalCode:
+          $ref: "#/components/schemas/PostalCode"
+        start:
+          $ref: "#/components/schemas/DateTime"
+        publish:
+          $ref: "#/components/schemas/DateTime"
+        draft:
+          type: boolean
+        transferable:
+          type: boolean
+        images:
+          description: First image is the main image of event
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          maxItems: 5
+        artists:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          maxItems: 5
+      required:
+        - idSubcategory
+        - cityName
+        - statuteIdUpload
+        - nftImageIdUpload
+        - name
+        - tags
+        - description
+        - video
+        - ticketPrice
+        - ticketCount
+        - maxTicketsPerUser
+        - location
+        - street
+        - postalCode
+        - start
+        - publish
+        - draft
+        - transferable
+        - images
+        - artists
+      additionalProperties: false
+    UpdateEvent:
+      type: object
+      properties:
+        idSubcategory:
+          $ref: "#/components/schemas/Id"
+        cityName:
+          $ref: "#/components/schemas/Name"
+        statuteIdUpload:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Id"
+        nftImageIdUpload:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Id"
+        tags:
+          $ref: "#/components/schemas/Tags"
+        description:
+          $ref: "#/components/schemas/Description"
+        video:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Url"
+        location:
+          $ref: "#/components/schemas/LongName"
+        street:
+          $ref: "#/components/schemas/Name"
+        postalCode:
+          $ref: "#/components/schemas/PostalCode"
+        start:
+          $ref: "#/components/schemas/DateTime"
+        draft:
+          type: boolean
+        images:
+          description: First image is the main image of event
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          maxItems: 5
+        artists:
+          type: array
+          items:
+            $ref: "#/components/schemas/Id"
+          maxItems: 5
+      required:
+        - idSubcategory
+        - cityName
+        - statuteIdUpload
+        - nftImageIdUpload
+        - tags
+        - description
+        - video
+        - location
+        - street
+        - postalCode
+        - start
+        - draft
+        - images
+        - artists
+      additionalProperties: false
+    ListEvents:
+      type: array
+      items:
+        type: object
+        properties:
+          idEvent:
+            $ref: "#/components/schemas/Id"
+          creatorIdUser:
+            $ref: "#/components/schemas/Id"
+          creatorUsername:
+            $ref: "#/components/schemas/Name"
+          idSubcategory:
+            $ref: "#/components/schemas/Id"
+          subcategoryName:
+            $ref: "#/components/schemas/Name"
+          idCity:
+            $ref: "#/components/schemas/Id"
+          cityName:
+            $ref: "#/components/schemas/Name"
+          name:
+            $ref: "#/components/schemas/LongName"
+          ticketPrice:
+            $ref: "#/components/schemas/Price"
+          remainingTicketCount:
+            type: integer
+            minimum: 0
+          location:
+            $ref: "#/components/schemas/LongName"
+          start:
+            $ref: "#/components/schemas/DateTime"
+          draft:
+            type: boolean
+          likes:
+            type: integer
+            minimum: 0
+          transferable:
+            type: boolean
+          created:
+            $ref: "#/components/schemas/DateTime"
+          image:
+            anyOf:
+              - type: "null"
+              - $ref: "#/components/schemas/Url"
+        required:
+          - idEvent
+          - creatorIdUser
+          - creatorUsername
+          - idSubcategory
+          - subcategoryName
+          - idCity
+          - cityName
+          - name
+          - ticketPrice
+          - remainingTicketCount
+          - location
+          - start
+          - likes
+          - transferable
+          - created
+          - image
+        additionalProperties: false
+    GetEvent:
+      type: object
+      properties:
+        idEvent:
+          $ref: "#/components/schemas/Id"
+        creatorIdUser:
+          $ref: "#/components/schemas/Id"
+        creatorUsername:
+          $ref: "#/components/schemas/Name"
+        idSubcategory:
+          $ref: "#/components/schemas/Id"
+        subcategoryName:
+          $ref: "#/components/schemas/Name"
+        idCity:
+          $ref: "#/components/schemas/Id"
+        cityName:
+          $ref: "#/components/schemas/Name"
+        statuteIdUpload:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Id"
+        statuteUrl:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Url"
+        nftImageIdUpload:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Id"
+        nftImageUrl:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Url"
+        name:
+          $ref: "#/components/schemas/LongName"
+        tags:
+          $ref: "#/components/schemas/Tags"
+        description:
+          $ref: "#/components/schemas/Description"
+        contractAddress:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/PublicAddress"
+        video:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Url"
+        ticketPrice:
+          $ref: "#/components/schemas/Price"
+        ticketCount:
+          type: integer
+          minimum: 1
+        maxTicketsPerUser:
+          type: integer
+          minimum: 1
+        remainingTicketCount:
+          type: integer
+          minimum: 0
+        remainingTicketsPerUser:
+          type: integer
+          minimum: 0
+        location:
+          $ref: "#/components/schemas/LongName"
+        street:
+          $ref: "#/components/schemas/Name"
+        postalCode:
+          $ref: "#/components/schemas/PostalCode"
+        start:
+          $ref: "#/components/schemas/DateTime"
+        publish:
+          $ref: "#/components/schemas/DateTime"
+        draft:
+          type: boolean
+        likes:
+          type: integer
+          minimum: 0
+        transferable:
+          type: boolean
+        created:
+          $ref: "#/components/schemas/DateTime"
+        images:
+          type: array
+          items:
+            type: object
+            properties:
+              idUpload:
+                $ref: "#/components/schemas/Id"
+              url:
+                $ref: "#/components/schemas/Url"
+            required:
+              - idUpload
+              - url
+            additionalProperties: false
+        artists:
+          $ref: "#/components/schemas/ListArtists"
+      required:
+        - idEvent
+        - creatorIdUser
+        - creatorUsername
+        - idSubcategory
+        - subcategoryName
+        - idCity
+        - cityName
+        - statuteIdUpload
+        - statuteUrl
+        - name
+        - description
+        - contractAddress
+        - video
+        - ticketPrice
+        - remainingTicketCount
+        - remainingTicketsPerUser
+        - location
+        - street
+        - postalCode
+        - start
+        - likes
+        - transferable
+        - created
+        - images
+        - artists
+      additionalProperties: false
+    TicketVerificationResult:
+      type: object
+      properties:
+        hasTicket:
+          type: boolean
+        isTicketUsed:
+          anyOf:
+            - type: "null"
+            - type: boolean
+        user:
+          anyOf:
+            - type: "null"
+            - $ref: "#/components/schemas/GetUser"
+      required:
+        - hasTicket
+        - isTicketUsed
+        - user
+      additionalProperties: false
+    GetToken:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/Name"
+        description:
+          $ref: "#/components/schemas/Description"
+        image:
+          $ref: "#/components/schemas/Url"
+        external_url:
+          $ref: "#/components/schemas/Url"
+        attributes:
+          type: array
+          items:
+            type: object
+            properties:
+              display_type:
+                type: string
+                examples: [date]
+              trait_type:
+                type: string
+                examples: [Created]
+              value:
+                type:
+                  - string
+                  - integer
+                examples: [1717236000]
+            required:
+              - display_type
+              - trait_type
+              - value
+            additionalProperties: false
+      required:
+        - name
+        - description
+        - external_url
+        - attributes
+      additionalProperties: false
+    CreateUpload:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+        type:
+          $ref: "#/components/schemas/UploadType"
+      required:
+        - file
+        - type
+      additionalProperties: false
+    GetUpload:
+      type: object
+      properties:
+        idUpload:
+          $ref: "#/components/schemas/Id"
+        url:
+          type: string
+          format: url
+        type:
+          $ref: "#/components/schemas/UploadType"
+      required:
+        - idUpload
+        - url
+        - type
+      additionalProperties: false
+    UpdateUserRole:
+      type: object
+      properties:
+        role:
+          $ref: "#/components/schemas/UserRole"
+      required:
+        - role
+      additionalProperties: false
+    UpdateUser:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/Name"
+        surname:
+          $ref: "#/components/schemas/Name"
+        birthdate:
+          $ref: "#/components/schemas/Date"
+      required:
+        - name
+        - surname
+        - birthdate
+      additionalProperties: false
+    ListUsers:
+      type: array
+      items:
+        type: object
+        properties:
+          idUser:
+            $ref: "#/components/schemas/Id"
+          publicAddress:
+            $ref: "#/components/schemas/PublicAddress"
+          email:
+            $ref: "#/components/schemas/Email"
+          username:
+            $ref: "#/components/schemas/Name"
+          role:
+            $ref: "#/components/schemas/UserRole"
+          active:
+            type: boolean
+          created:
+            $ref: "#/components/schemas/DateTime"
+        required:
+          - idUser
+          - publicAddress
+          - email
+          - username
+          - role
+          - active
+          - created
+        additionalProperties: false
+    GetUser:
+      type: object
+      properties:
+        idUser:
+          $ref: "#/components/schemas/Id"
+        publicAddress:
+          $ref: "#/components/schemas/PublicAddress"
+        email:
+          $ref: "#/components/schemas/Email"
+        username:
+          $ref: "#/components/schemas/Name"
+        name:
+          $ref: "#/components/schemas/Name"
+        surname:
+          $ref: "#/components/schemas/Name"
+        birthdate:
+          $ref: "#/components/schemas/Date"
+        role:
+          $ref: "#/components/schemas/UserRole"
+        created:
+          $ref: "#/components/schemas/DateTime"
+      required:
+        - idUser
+        - publicAddress
+        - email
+        - username
+        - name
+        - surname
+        - birthdate
+        - role
+        - created
+      additionalProperties: false
+    ListTickets:
+      type: array
+      items:
+        type: object
+        properties:
+          idTicket:
+            $ref: "#/components/schemas/Id"
+          idEvent:
+            $ref: "#/components/schemas/Id"
+          eventName:
+            $ref: "#/components/schemas/LongName"
+          idUser:
+            $ref: "#/components/schemas/Id"
+          email:
+            $ref: "#/components/schemas/Email"
+          username:
+            $ref: "#/components/schemas/Name"
+          tokenId:
+            $ref: "#/components/schemas/TokenId"
+          ticketAddress:
+            $ref: "#/components/schemas/PublicAddress"
+          ticketPrice:
+            $ref: "#/components/schemas/Price"
+          ticketUsed:
+            type: boolean
+          created:
+            $ref: "#/components/schemas/DateTime"
+        required:
+          - idTicket
+          - idEvent
+          - eventName
+          - idUser
+          - email
+          - username
+          - tokenId
+          - ticketAddress
+          - ticketPrice
+          - ticketUsed
+          - created
+        additionalProperties: false
+    SalesReport:
+      type: object
+      properties:
+        dailyIncome:
+          description: Daily income for every day up to 30 days
+          type: array
+          items:
+            type: object
+            properties:
+              idEvent:
+                $ref: "#/components/schemas/Id"
+              eventName:
+                $ref: "#/components/schemas/Name"
+              date:
+                description: Calendar year, month and day - yyyy-MM-dd
+                type: string
+                examples: ["2024-06-03"]
+              income:
+                $ref: "#/components/schemas/Price"
+              ticketCount:
+                type: integer
+                minimum: 1
+            required:
+              - idEvent
+              - eventName
+              - date
+              - income
+              - ticketCount
+            additionalProperties: false
+        monthlyIncome:
+          description: Monthly income for every month up to 12 months
+          type: array
+          items:
+            type: object
+            properties:
+              idEvent:
+                $ref: "#/components/schemas/Id"
+              eventName:
+                $ref: "#/components/schemas/Name"
+              date:
+                description: Calendar year and month - yyyy-MM
+                type: string
+                examples: ["2024-06"]
+              income:
+                $ref: "#/components/schemas/Price"
+              ticketCount:
+                type: integer
+                minimum: 1
+            required:
+              - idEvent
+              - eventName
+              - date
+              - income
+              - ticketCount
+            additionalProperties: false
+        annualIncome:
+          description: Annual income for every year up to 5 years
+          type: array
+          items:
+            type: object
+            properties:
+              idEvent:
+                $ref: "#/components/schemas/Id"
+              eventName:
+                $ref: "#/components/schemas/Name"
+              date:
+                description: Calendar year - yyyy
+                type: string
+                examples: ["2024"]
+              income:
+                $ref: "#/components/schemas/Price"
+              ticketCount:
+                type: integer
+                minimum: 1
+            required:
+              - idEvent
+              - eventName
+              - date
+              - income
+              - ticketCount
+            additionalProperties: false
+        ticketCountByCategory:
+          description: Ticket count by category including summary
+          type: array
+          items:
+            type: object
+            properties:
+              idCategory:
+                anyOf:
+                  - type: "null"
+                  - $ref: "#/components/schemas/Id"
+              categoryName:
+                anyOf:
+                  - type: "null"
+                  - $ref: "#/components/schemas/Name"
+              ticketCount:
+                type: integer
+                minimum: 1
+            required:
+              - idCategory
+              - categoryName
+              - ticketCount
+            additionalProperties: false
+      required:
+        - dailyIncome
+        - monthlyIncome
+        - annualIncome
+        - ticketCountByCategory
+      additionalProperties: false
+    ListUserTickets:
+      type: array
+      items:
+        type: object
+        properties:
+          idTicket:
+            $ref: "#/components/schemas/Id"
+          idEvent:
+            $ref: "#/components/schemas/Id"
+          eventName:
+            $ref: "#/components/schemas/LongName"
+          tokenId:
+            $ref: "#/components/schemas/TokenId"
+          ticketAddress:
+            $ref: "#/components/schemas/PublicAddress"
+          ticketPrice:
+            $ref: "#/components/schemas/Price"
+          ticketUsed:
+            type: boolean
+          created:
+            $ref: "#/components/schemas/DateTime"
+        required:
+          - idTicket
+          - idEvent
+          - eventName
+          - tokenId
+          - ticketAddress
+          - ticketPrice
+          - ticketUsed
+          - created
+        additionalProperties: false
+    CreateReview:
+      type: object
+      properties:
+        title:
+          $ref: "#/components/schemas/Name"
+        eventLocation:
+          $ref: "#/components/schemas/LongName"
+        eventDate:
+          $ref: "#/components/schemas/Date"
+        content:
+          $ref: "#/components/schemas/Content"
+        rate:
+          $ref: "#/components/schemas/Rate"
+      required:
+        - title
+        - eventLocation
+        - eventDate
+        - content
+        - rate
+      additionalProperties: false
+    ListReviews:
+      type: array
+      items:
+        type: object
+        properties:
+          idReview:
+            $ref: "#/components/schemas/Id"
+          reviewerIdUser:
+            $ref: "#/components/schemas/Id"
+          reviewerUsername:
+            $ref: "#/components/schemas/Name"
+          reviewedIdArtist:
+            $ref: "#/components/schemas/Id"
+          reviewedName:
+            $ref: "#/components/schemas/Name"
+          title:
+            $ref: "#/components/schemas/Name"
+          eventLocation:
+            $ref: "#/components/schemas/LongName"
+          eventDate:
+            $ref: "#/components/schemas/Date"
+          content:
+            $ref: "#/components/schemas/Content"
+          rate:
+            $ref: "#/components/schemas/Rate"
+          created:
+            $ref: "#/components/schemas/DateTime"
+        required:
+          - idReview
+          - reviewerIdUser
+          - reviewerUsername
+          - reviewedIdArtist
+          - reviewedName
+          - title
+          - eventLocation
+          - eventDate
+          - content
+          - rate
+          - created
+        additionalProperties: false
+    GetReview:
+      type: object
+      properties:
+        idReview:
+          $ref: "#/components/schemas/Id"
+        reviewerIdUser:
+          $ref: "#/components/schemas/Id"
+        reviewedIdArtist:
+          $ref: "#/components/schemas/Id"
+        title:
+          $ref: "#/components/schemas/Name"
+        eventLocation:
+          $ref: "#/components/schemas/LongName"
+        eventDate:
+          $ref: "#/components/schemas/Date"
+        content:
+          $ref: "#/components/schemas/Content"
+        rate:
+          $ref: "#/components/schemas/Rate"
+        created:
+          $ref: "#/components/schemas/DateTime"
+      required:
+        - idReview
+        - reviewerIdUser
+        - reviewedIdArtist
+        - title
+        - eventLocation
+        - eventDate
+        - content
+        - rate
+        - created
+      additionalProperties: false
+    Error:
+      type: object
+      properties:
+        message:
+          description: A human readable error message
+          type: string
+      required:
+        - message
+      additionalProperties: false
+  securitySchemes:
+    bearerAuth:
+      description: Bearer token using a JWT
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

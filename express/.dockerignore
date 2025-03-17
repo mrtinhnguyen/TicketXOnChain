@@ -1,0 +1,8 @@
+node_modules
+dist
+postman
+.dockerignore
+.env
+.gitignore
+Dockerfile
+firebase-adminsdk.json

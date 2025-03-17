@@ -1,0 +1,28 @@
+# Build environment
+FROM node:22-alpine AS build
+
+WORKDIR /app
+
+COPY package*.json .
+
+RUN npm ci --silent
+
+COPY . .
+
+RUN npm run build
+
+# Production environment
+FROM node:22-alpine AS production
+
+WORKDIR /app
+
+ENV NODE_ENV production
+ENV TZ 'UTC'
+
+COPY package*.json .
+
+RUN npm ci --silent
+
+COPY --from=build /app/dist dist
+
+CMD ["node", "dist/EthereumEventConsumer.js"]

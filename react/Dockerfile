@@ -1,0 +1,37 @@
+# Build environment
+FROM node:22-alpine AS build
+
+WORKDIR /app
+
+ARG BACKEND_BASE_URL
+ARG GOOGLE_MAPS_EMBED_API_KEY
+ARG GOOGLE_CALENDAR_API_KEY
+ARG GOOGLE_OAUTH_CLIENT_ID
+ARG SENTRY_DSN
+ARG SENTRY_AUTH_TOKEN
+
+ENV VITE_BACKEND_BASE_URL ${BACKEND_BASE_URL}
+ENV VITE_GOOGLE_MAPS_EMBED_API_KEY ${GOOGLE_MAPS_EMBED_API_KEY}
+ENV VITE_GOOGLE_CALENDAR_API_KEY ${GOOGLE_CALENDAR_API_KEY}
+ENV VITE_GOOGLE_OAUTH_CLIENT_ID ${GOOGLE_OAUTH_CLIENT_ID}
+ENV VITE_SENTRY_DSN ${SENTRY_DSN}
+ENV SENTRY_AUTH_TOKEN ${SENTRY_AUTH_TOKEN}
+ENV NODE_OPTIONS "--max_old_space_size=4096"
+
+COPY package*.json .
+
+RUN npm ci --silent
+
+COPY . .
+
+RUN npm run build
+
+# Production environment
+FROM nginx:1.27-alpine AS production
+
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,52 @@
+.cardImageContainer {
+  height: 200px;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.profileMenu {
+  top: 1rem;
+}
+
+.userTicketsListing {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.chartContainer {
+  height: 400px;
+  user-select: "none";
+  background-color: #e5e8ee;
+  border-radius: 1rem;
+  border: 1px solid #e5e7eb;
+  padding: 1rem;
+}
+
+.previewImageContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 15rem;
+  width: 100%;
+  margin: auto;
+  overflow: hidden;
+  background-color: #f2f2f2;
+}
+
+.imageContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20rem;
+  width: 100%;
+  margin: auto;
+  overflow: hidden;
+  background-color: #f2f2f2;
+}
+
+.image {
+  width: 100%;
+}
